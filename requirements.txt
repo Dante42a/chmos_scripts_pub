@@ -1,0 +1,2 @@
+pyinstaller>=5.4.1
+paramiko>=2.11.0
