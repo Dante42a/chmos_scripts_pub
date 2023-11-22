@@ -258,10 +258,10 @@ def install_veyon():
         "apt-get install veyon -y; "
         "veyon-cli authkeys delete admin/private; "
         "veyon-cli authkeys delete admin/public; "
-        "veyon-cli authkeys create admin; "
-        "veyon-cli authkeys setaccessgroup admin/private admin; "
-        "veyon-cli authkeys setaccessgroup admin/private teacher; "
-        "veyon-cli authkeys export admin/public /home/admin/teacher_control/admin_public_key.pem; "
+        "veyon-cli authkeys create teacher; "
+        "veyon-cli authkeys setaccessgroup teacher/private admin; "
+        "veyon-cli authkeys setaccessgroup teacher/private teacher; "
+        "veyon-cli authkeys export teacher/public /home/admin/teacher_control/teacher_public_key.pem; "
         "veyon-cli networkobjects add location {}; "
         "for i in $(cat /home/admin/teacher_control/hosts.txt); "
         "do veyon-cli networkobjects add computer $i $i \"\" {}; "
@@ -275,12 +275,12 @@ def install_veyon():
     os.system(
         'ssh-add; '
         'for i in $(cat /home/admin/teacher_control/hosts.txt); '
-        'do scp /home/admin/teacher_control/admin_public_key.pem root@$i:/tmp/ && '
+        'do scp /home/admin/teacher_control/teacher_public_key.pem root@$i:/tmp/ && '
         'scp /home/admin/teacher_control/myconfig.json root@$i:/tmp/ && '
         'ssh root@$i "apt-get update && '
         'apt-get -y install veyon && '
         'veyon-cli authkeys delete admin/public; '
-        'veyon-cli authkeys import admin/public /tmp/admin_public_key.pem && '
+        'veyon-cli authkeys import teacher/public /tmp/teacher_public_key.pem && '
         'veyon-cli config import /tmp/myconfig.json && '
         'veyon-cli service start && '
         'reboot"; '
@@ -393,7 +393,8 @@ def resolve_hostname():
         "service nmb start;"
         "service winbind start'"
     )
-    print('Настройка Учителя завершена')
+    logging.info("Самба сервисы установлены и запущены на ПК учителя")
+    print('Настройка Учителя завершена, начинаю настройку учеников')
     os.system(
         'ssh-add; '
         'for i in $(cat /home/admin/teacher_control/hosts.txt); '
@@ -407,6 +408,84 @@ def resolve_hostname():
         'service winbind start;'
         'reboot"; '
         'done'
+    )
+    logging.info("Самба сервисы установлены и запущены на ПК ученика")
+    print('Установка завершена')
+
+def FuckYouCCO():
+    print('Сносим ЦЦОшные излишки у учителя')
+    os.system(
+        "su - root -c 'apt-get remove apt-indicator uds-system-agent mos-tele -y && rm -f /etc/uds-system-agent/*;"
+    )
+    logging.info("На ПК учителя удалён apt-indicator uds-system-agent mos-tele")
+    print('Сносим ЦЦОшные излишки у учеников')
+    os.system(
+        "ssh-add;"
+        "for i in $(cat /home/admin/teacher_control/hosts.txt);"
+        "do ssh root@$i 'apt-get remove apt-indicator uds-system-agent mos-tele -y && rm -f /etc/uds-system-agent/*"
+        "done"
+    )
+    logging.info("На ПК учеников удалён apt-indicator uds-system-agent mos-tele")
+
+def wine_install():
+    print('Ставим Wine на учительском ПК')
+    os.system(
+        "rm -rf /etc/apt/sources.list.d/mos-base-repo.list;"
+        "rm -rf /etc/apt/sources.list.d/mos-repo.list;"
+        "sed '4s/^#//' -i /etc/apt/sources.list.d/alt.list;"
+        "sed '5s/^#//' -i /etc/apt/sources.list.d/alt.list;"
+        "sed '6s/^#//' -i /etc/apt/sources.list.d/alt.list;"
+        "su - root -c 'apt-get update --fix-missing;"
+        "apt-get install i586-wine fonts-ttf-wingdings wine-programs i586-libGL i586-libGLU winewizard i586-playonlinux i586-xorg-dri-vmwgfx i586-xorg-dri-virtio i586-xorg-dri-swrast i586-xorg-dri-radeon i586-xorg-dri-nouveau i586-xorg-dri-intel wine-mono winetricks -y; "
+        "dpkg --add-architecture i386; "
+        "rm -R -I ~/.wine -y --force;"
+        "env WINEPREFIX=~/.wine WINEARCH=win32 winecfg';"
+        "su - teacher -c 'rm -R -I ~/.wine --force;"
+        "env WINEPREFIX=~/.wine WINEARCH=win32 winecfg;"
+        "winetricks --force -q dotnet472;"
+        "winetricks -q d3dcompiler_47;"
+        "winetricks -q vcrun2015;"
+        "winetricks -q corefonts'"
+        "done"
+    )
+    logging.info('Wine на учительском ПК установлен')
+    print('Ставим Wine на ученических ПК')
+    os.system(
+        "ssh-add;"
+        "for i in $(cat /home/admin/teacher_control/hosts.txt);"
+        "do ssh root@$i 'apt-get update --fix-missing;"
+        "rm -rf /etc/apt/sources.list.d/mos-base-repo.list;"
+        "rm -rf /etc/apt/sources.list.d/mos-repo.list;"
+        "sed '4s/^#//' -i /etc/apt/sources.list.d/alt.list;"
+        "sed '5s/^#//' -i /etc/apt/sources.list.d/alt.list;"
+        "sed '6s/^#//' -i /etc/apt/sources.list.d/alt.list;"
+        "apt-get install i586-wine fonts-ttf-wingdings wine-programs i586-libGL i586-libGLU winewizard i586-playonlinux i586-xorg-dri-vmwgfx i586-xorg-dri-virtio i586-xorg-dri-swrast i586-xorg-dri-radeon i586-xorg-dri-nouveau i586-xorg-dri-intel wine-mono winetricks -y;"
+        "dpkg --add-architecture i386;"
+        "rm -R -I ~/.wine -y --force;"
+        "env WINEPREFIX=~/.wine WINEARCH=win32 winecfg;'"
+        "ssh student@$i 'rm -R -I ~/.wine --force;"
+        "env WINEPREFIX=~/.wine WINEARCH=win32 winecfg;"
+        "winetricks --force -q dotnet472;"
+        "winetricks -q d3dcompiler_47;"
+        "winetricks -q vcrun2015;"
+        "winetricks -q corefonts;"
+        "reboot'"
+        "done"
+    )
+    logging.info('Wine на ученических ПК установлен')
+    print('Wine установлен')  
+
+def KDE_fix():
+    os.system(
+        'hostname=$(kdialog --title="Настройка системы" --inputbox "Введите имя компьютера" $hostname;)'
+        'echo $hostname'
+        'ssh-add'     
+        'do ssh root@$hostname "apt-get update --fix-missing && apt-get dist-upgrade -y && apt-get reinstall kde5-mini kde5-small gtk-theme-breeze-education sddm-theme-breeze kde5-display-manager-5-sddm plasma5-sddm-kcm sddm plasma5-khotkeys && reboot"'
+        'done'
+    )
+def KDE_Lock():
+    os.system(
+        ''
     )
 
 def main():
@@ -444,11 +523,13 @@ def main():
               '[2] - настроить доступ по ssh для всех компьютеров из вашего файла hosts.txt\n'
               '[3] - создать сетевую папку share и копировать её ярлык на устройства учеников '
               '(требуется настроенный ssh)\n'
-              '[4] - установить veyon на всех компьютерах в кабинете (требуется настроенный ssh)\n'
+              '[4] - установить veyon на всех компьютерах в кабинете (занимает немного времени)\n'
               '[5] - включить Wake-On-Lan\n'
               '[6] - включить резолв имён пк для винды\n'
-              '[7] - установить teacher_control и создать архив с папкой /home/student '
-              'каждого устройства из файла hosts.txt (требуется настроенный ssh)'
+              '[7] - удалить UDS, mos-invent и mos-tele\n'
+              '[8] - установить Wine (занимает много времени)\n'
+              '[9] - ремонт сломаного окна авторизации по имени ПК (по ssh, нужно вести имя пк с припиской .local на конце) \n'
+              '[10] - установка ограничений рабочего стола Student \n'
               '\n\n[0] - выход')
         print("Введите номер действия и нажмите Enter:")
         logging.info("Открыто главное меню")
@@ -472,7 +553,15 @@ def main():
             resolve_hostname()    
         if answer == 7:
             test_ssh()
-            student_archive()
+            FuckYouCCO()
+        if answer == 8:
+            test_ssh()
+            wine_install()
+        if answer == 9:
+            test_ssh()
+            KDE_fix()
+        if answer == 10:
+
         if answer == 0:
             exit_app()
 
